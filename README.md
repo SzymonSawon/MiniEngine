@@ -4,7 +4,7 @@ A lightweight **game engine** written in [Odin](https://odin-lang.org/) and powe
 his project serves as an educational resource for learning how to build a game engine from scratch, 
 focusing on rendering, resource management, and basic game mechanics.
 
-## 🚀 Features
+## Features
 
 - **Loading .obj and .mtl files**
 - **Texture Management** with PNG support.
@@ -14,7 +14,7 @@ focusing on rendering, resource management, and basic game mechanics.
 
 ---
 
-## 🛠️ Getting Started
+## Getting Started
 
 ### **1. Prerequisites**
 
