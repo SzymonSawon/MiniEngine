@@ -20,7 +20,7 @@ focusing on rendering, resource management, and basic game mechanics.
 
 Before you begin, ensure you have the following installed:
 
-- **Odin Compiler**: [Download here](https://odin-lang.org/download/)
+- **Odin Compiler**: [Download here](https://odin-lang.org/docs/install/)
 
 ### **2. Running**
 
