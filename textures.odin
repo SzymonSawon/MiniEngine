@@ -15,13 +15,15 @@ load_image :: proc(filepath, filename:string) -> TEXTURE{
     full_path:string = strings.concatenate({filepath, filename})
     image_ptr: ^image.Image
     err: image.Error
-    options := image.Options{.alpha_add_if_missing}
+    options := image.Options{}
     image_ptr, err = png.load_from_file(full_path, options)
+    defer png.destroy(image_ptr)
     image_w := i32(image_ptr.width)
     image_h := i32(image_ptr.height)
 
     if err != nil {
         fmt.print("ERROR: Image: ", full_path, " failed to load.")
+        return 0
     }
     image_pixels := make([]u8, len(image_ptr.pixels.buf))
     for b, i in image_ptr.pixels.buf {

@@ -31,14 +31,14 @@ void main()
 
     //Blinn-Phong
     //vec3 halfwayDir = normalize(lightDir + viewDir);
-    //float spec = pow(max(dot(norm, halfwayDir), 0.0), mtlSpecularExponent);
+    //float spec = pow(max(dot(norm, halfwayDir), 0.0));
     float specularStrength = 0.5f;
     //l = P_0-P_1
     vec3 viewDir = normalize(viewPos - FragPos);
     //r = l - 2.0 * dot(n, l) * n
     vec3 reflectDir = reflect(-lightDir, norm);
     //k = dot(r,v)^alpha
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), mtlSpecularExponent);
     //specular = spec_strength * l * k
     vec3 specular = specularStrength * spec * mtlSpecular;
 

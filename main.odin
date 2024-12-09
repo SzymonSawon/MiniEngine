@@ -69,10 +69,10 @@ main :: proc() {
     model:Model = read_obj("./models/fish_2.obj")
     vao, fish_texture := setup_model(model,"./models/textures/")
     append(&model.material.textures, fish_texture)
-
-    rocks_model:Model = read_obj("./models/rocky_trail.obj")
-    rocks_vao, rocks_texture := setup_model(rocks_model,"./models/textures/")
+    rocks_model:Model = read_obj("./models/bug.obj")
+    rocks_vao, rocks_texture := setup_model(rocks_model,"./models/")
     append(&rocks_model.material.textures, rocks_texture)
+
 
     //SETUP SYSTEM
     m,p,mvp,v :linalg.Matrix4x4f32
@@ -86,6 +86,7 @@ main :: proc() {
         height
     }
 
+    fmt.print(vao, rocks_vao)
     gl.Enable(gl.DEPTH_TEST)
 
     tex_program_ok      : bool
@@ -98,6 +99,8 @@ main :: proc() {
     if !tex_program_ok {
         fmt.println("ERROR: Failed to load and compile shaders."); os.exit(1)
     }
+
+
 
 
     glfw.SetCursorPosCallback(window, mouse_callback)
@@ -155,8 +158,8 @@ main :: proc() {
 
         system.camera.p = linalg.matrix4_perspective_f32(camera.fov, ratio, 0.1, 400.0)
         
-        draw_model(&model,&system,vao,0)
-        draw_model(&rocks_model,&system,rocks_vao,1)
+        draw_model(&model,&system,vao,0, {0.0,0.0,0.0})
+        draw_model(&rocks_model,&system,rocks_vao,0,{0.0,0.0,0.0})
 
 
         glfw.SwapBuffers(window)
