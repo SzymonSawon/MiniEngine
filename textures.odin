@@ -16,8 +16,8 @@ load_image :: proc(filepath, filename:string) -> TEXTURE{
     image_ptr: ^image.Image
     err: image.Error
     options := image.Options{}
+    fmt.print("\n\n", full_path)
     image_ptr, err = png.load_from_file(full_path, options)
-    defer png.destroy(image_ptr)
     image_w := i32(image_ptr.width)
     image_h := i32(image_ptr.height)
 

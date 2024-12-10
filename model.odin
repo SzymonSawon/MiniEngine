@@ -6,6 +6,8 @@ import "core:fmt"
 import "core:os"
 import "vendor:glfw"
 import gl "vendor:OpenGL"
+import "core:time"
+import "core:math"
 
 //make model and object structs from model struct
 // to differentiate models and their objects(
@@ -17,7 +19,8 @@ Model :: struct{
     material: Material,
     shader: Shader,
     m: linalg.Matrix4f32,
-    children: [dynamic]Model
+    position: linalg.Vector3f32,
+    children: [dynamic]^Model
 }
 
 Material :: struct{
@@ -52,7 +55,7 @@ read_obj :: proc(filepath: string) -> Model {
     temp_vertex: Vertex
     material_textures: [dynamic]TEXTURE
     locations: [dynamic]u32
-    children_models: [dynamic]Model
+    children_models: [dynamic]^Model
     shader: Shader = {
         0,
         locations
@@ -130,7 +133,6 @@ read_obj :: proc(filepath: string) -> Model {
                 mtl_filename: string = str_array[1]
                 mtl_filepath:string = "./models/"
                 mtl_data, ok := os.read_entire_file(strings.concatenate({mtl_filepath,mtl_filename}), context.allocator)
-                defer delete(mtl_data, context.allocator)
                 it := string(mtl_data)
                 for l in strings.split_lines_iterator(&it) {
                     mtl_str_array := strings.split(l, " ")
@@ -167,7 +169,6 @@ read_obj :: proc(filepath: string) -> Model {
                             model_spec_exp = a
                         case "map_Kd":
                             texture_filename= mtl_str_array[1]
-                            fmt.print(texture_filename)
                     }
                 }
 
@@ -189,16 +190,16 @@ read_obj :: proc(filepath: string) -> Model {
         },
         shader,
         m,
+        linalg.Vector3f32({0.0,0.0,0.0}),
         children_models
     }
 }
 
 
-draw_model :: proc(model: ^Model, system: ^System, vao: VAO, tex_id: u32, position: [3]f32) {
+draw_model :: proc(model: ^Model, system: ^System, vao: VAO, tex_id: u32, light_source_pos: linalg.Vector3f32) {
     gl.UseProgram(model.shader.program)
     model.m = linalg.identity_matrix(linalg.Matrix4x4f32)
-    model.m = linalg.matrix4_translate_f32(linalg.Vector3f32{0.0,5.0,0.0}) * model.m
-    system.camera.v = linalg.matrix4_translate_f32(linalg.Vector3f32({position[0],position[1],position[2]})) * system.camera.v
+    model.m= linalg.matrix4_translate_f32(linalg.Vector3f32({model.position[0],model.position[1],model.position[2]})) * model.m
     system.mvp = system.camera.p * system.camera.v
     system.mvp = system.mvp * model.m
 
@@ -206,14 +207,56 @@ draw_model :: proc(model: ^Model, system: ^System, vao: VAO, tex_id: u32, positi
     gl.UniformMatrix4fv(gl.GetUniformLocation(model.shader.program, "model"   ), 1, gl.FALSE, &model.m[0][0])
     gl.UniformMatrix4fv(gl.GetUniformLocation(model.shader.program, "view"), 1, gl.FALSE, &system.camera.v[0][0])
     gl.UniformMatrix4fv(gl.GetUniformLocation(model.shader.program, "projection"), 1, gl.FALSE, &system.camera.p[0][0])
-    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "lightColor"), 1.0,1.0,1.0);
-    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "objectColor"), 0.5,0.7,0.9);
-    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "lightPos"), 20.0,50.0,0.0);
-    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "viewPos"), system.camera.position[0], system.camera.position[1], system.camera.position[2]);
-    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlAmbient"), model.material.ambient[0], model.material.ambient[1], model.material.ambient[2]);
-    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlDiffuse"), model.material.diffuse[0], model.material.diffuse[1], model.material.diffuse[2]);
-    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlSpecular"), model.material.specular[0], model.material.specular[1], model.material.specular[2]);
-    gl.Uniform1f(gl.GetUniformLocation(model.shader.program, "mtlSpecularExponent"), model.material.specular_exponent);
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "lightColor"), 1.0,1.0,1.0)
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "objectColor"), 0.5,0.7,0.9)
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "lightPos"), light_source_pos[0], light_source_pos[1], light_source_pos[2])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "viewPos"), system.camera.position[0], system.camera.position[1], system.camera.position[2])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlAmbient"), model.material.ambient[0], model.material.ambient[1], model.material.ambient[2])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlDiffuse"), model.material.diffuse[0], model.material.diffuse[1], model.material.diffuse[2])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlSpecular"), model.material.specular[0], model.material.specular[1], model.material.specular[2])
+    gl.Uniform1f(gl.GetUniformLocation(model.shader.program, "mtlSpecularExponent"), model.material.specular_exponent)
+    gl.ActiveTexture(gl.TEXTURE0 + tex_id)
+    gl.BindTexture(gl.TEXTURE_2D, model.material.textures[0])
+    
+
+    gl.BindVertexArray(vao)
+    gl.DrawElements(gl.TRIANGLES, i32(len(model.vertex_indices)), gl.UNSIGNED_INT, rawptr(uintptr(0)))
+}
+
+
+animate_planet :: proc(model: ^Model, system: ^System, vao: VAO, tex_id: u32, light_source_pos: linalg.Vector3f32) {
+    raw_duration := time.stopwatch_duration(watch)
+    secs := f32(time.duration_seconds(raw_duration))
+    theta := -secs
+
+    rotation_matrix := linalg.Matrix4x4f32{
+        f32(math.cos(theta)),   0.0,  f32(math.sin(theta)),   0.0,
+        0.0,                    1.0,  0.0,                    0.0,
+        -f32(math.sin(theta)),  0.0,  f32(math.cos(theta)),  0.0,
+        0.0,                    0.0,  0.0,                    1.0
+        }
+
+    gl.UseProgram(model.shader.program)
+    model.m = linalg.identity_matrix(linalg.Matrix4x4f32)
+    model.m = linalg.matrix4_translate_f32(linalg.Vector3f32({model.position[0],model.position[1],model.position[2]})) * model.m
+    model.m = linalg.matrix4_rotate_f32(50, {1.0,0.0,0.0}) * model.m
+    model.m *= rotation_matrix
+    model.m = linalg.matrix4_translate_f32(linalg.Vector3f32({-10.0 * math.sin(theta), 0, 10.0 * math.cos(theta)})) * model.m
+    system.mvp = system.camera.p * system.camera.v
+    system.mvp = system.mvp * model.m
+
+    gl.UniformMatrix4fv(gl.GetUniformLocation(model.shader.program, "MVP"   ), 1, gl.FALSE, &system.mvp[0][0])
+    gl.UniformMatrix4fv(gl.GetUniformLocation(model.shader.program, "model"   ), 1, gl.FALSE, &model.m[0][0])
+    gl.UniformMatrix4fv(gl.GetUniformLocation(model.shader.program, "view"), 1, gl.FALSE, &system.camera.v[0][0])
+    gl.UniformMatrix4fv(gl.GetUniformLocation(model.shader.program, "projection"), 1, gl.FALSE, &system.camera.p[0][0])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "lightColor"), 1.0,1.0,1.0)
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "objectColor"), 0.5,0.7,0.9)
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "lightPos"), light_source_pos[0], light_source_pos[1], light_source_pos[2])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "viewPos"), system.camera.position[0], system.camera.position[1], system.camera.position[2])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlAmbient"), model.material.ambient[0], model.material.ambient[1], model.material.ambient[2])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlDiffuse"), model.material.diffuse[0], model.material.diffuse[1], model.material.diffuse[2])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlSpecular"), model.material.specular[0], model.material.specular[1], model.material.specular[2])
+    gl.Uniform1f(gl.GetUniformLocation(model.shader.program, "mtlSpecularExponent"), model.material.specular_exponent)
     gl.ActiveTexture(gl.TEXTURE0 + tex_id)
     gl.BindTexture(gl.TEXTURE_2D, model.material.textures[0])
     
@@ -232,7 +275,6 @@ setup_model :: proc(model: Model, texture_path: string) -> (vao:VAO, texture:TEX
     gl.GenBuffers(1, &ebo)
 
     gl.BindVertexArray(vao)
-
     stride1 := i32(size_of(Vertex))
     gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
     gl.BufferData(gl.ARRAY_BUFFER, len(model.vertex) * size_of(Vertex), raw_data(model.vertex), gl.STATIC_DRAW)
@@ -249,4 +291,24 @@ setup_model :: proc(model: Model, texture_path: string) -> (vao:VAO, texture:TEX
     gl.VertexAttribPointer(2, 3, gl.FLOAT, gl.FALSE, stride1, offset_of(Vertex, normal))
     gl.EnableVertexAttribArray(2)
     return vao, texture
+}
+
+move_model :: proc (model: ^Model, move_vector: linalg.Vector3f32){
+    model.position += move_vector
+    if(len(model.children) < 0){
+        return
+    }
+    for c in model.children{
+        c.position += move_vector
+    }
+}
+
+scale_model :: proc (model: ^Model, scale_vector: linalg.Vector3f32){
+    model.m = linalg.matrix4_scale_f32(scale_vector) * model.m
+    if(len(model.children) < 0){
+        return
+    }
+    for c in model.children{
+        c.m = linalg.matrix4_scale_f32(scale_vector) * c.m
+    }
 }

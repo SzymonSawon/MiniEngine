@@ -11,7 +11,7 @@ import gl "vendor:OpenGL"
 System :: struct{
     camera: Camera,
     mvp: linalg.Matrix4f32,
-    width, height: i32
+    width, height: i32,
 }
 
 Camera :: struct{

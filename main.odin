@@ -66,13 +66,22 @@ main :: proc() {
     gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
     //SETUP MODELS
-    model:Model = read_obj("./models/fish_2.obj")
-    vao, fish_texture := setup_model(model,"./models/textures/")
-    append(&model.material.textures, fish_texture)
-    rocks_model:Model = read_obj("./models/bug.obj")
-    rocks_vao, rocks_texture := setup_model(rocks_model,"./models/")
-    append(&rocks_model.material.textures, rocks_texture)
+    //model:Model = read_obj("./models/fish_2.obj")
+    //vao, fish_texture := setup_model(model,"./models/textures/")
+    //append(&model.material.textures, fish_texture)
 
+    sun_model:Model = read_obj("./models/sun.obj")
+    sun_vao, sun_texture := setup_model(sun_model,"./models/textures/")
+    append(&sun_model.material.textures, sun_texture)
+
+    neptune_model:Model = read_obj("./models/neptune.obj")
+    neptune_vao, neptune_texture := setup_model(neptune_model,"./models/textures/")
+    append(&neptune_model.material.textures, neptune_texture)
+    append(&sun_model.children, &neptune_model)
+
+    ship_model:Model = read_obj("./models/space_ship.obj")
+    ship_vao, ship_texture := setup_model(ship_model,"./models/textures/")
+    append(&ship_model.material.textures, ship_texture)
 
     //SETUP SYSTEM
     m,p,mvp,v :linalg.Matrix4x4f32
@@ -86,17 +95,25 @@ main :: proc() {
         height
     }
 
-    fmt.print(vao, rocks_vao)
     gl.Enable(gl.DEPTH_TEST)
 
     tex_program_ok      : bool
     tex_vertex_shader   := string(#load("shaders/texture_v.glsl"  ))
     tex_fragment_shader := string(#load("shaders/texture_f.glsl"))
 
-    model.shader.program, tex_program_ok = gl.load_shaders_source(tex_vertex_shader, tex_fragment_shader);
-    rocks_model.shader.program = model.shader.program
+    tex_nl_program_ok      : bool
+    tex_nl_vertex_shader   := string(#load("shaders/texture_no_l_v.glsl"  ))
+    tex_nl_fragment_shader := string(#load("shaders/texture_no_l_f.glsl"))
+
+    //model.shader.program, tex_program_ok = gl.load_shaders_source(tex_vertex_shader, tex_fragment_shader)
+    neptune_model.shader.program, tex_program_ok = gl.load_shaders_source(tex_vertex_shader, tex_fragment_shader)
+    ship_model.shader.program = neptune_model.shader.program
+    sun_model.shader.program, tex_nl_program_ok = gl.load_shaders_source(tex_nl_vertex_shader, tex_nl_fragment_shader)
 
     if !tex_program_ok {
+        fmt.println("ERROR: Failed to load and compile shaders."); os.exit(1)
+    }
+    if !tex_nl_program_ok {
         fmt.println("ERROR: Failed to load and compile shaders."); os.exit(1)
     }
 
@@ -158,8 +175,10 @@ main :: proc() {
 
         system.camera.p = linalg.matrix4_perspective_f32(camera.fov, ratio, 0.1, 400.0)
         
-        draw_model(&model,&system,vao,0, {0.0,0.0,0.0})
-        draw_model(&rocks_model,&system,rocks_vao,0,{0.0,0.0,0.0})
+        //draw_model(&model,&system,vao,0, {0.0,0.0,0.0}, sun_model.position)
+        draw_model(&sun_model,&system,sun_vao,0, sun_model.position)
+        animate_planet(&ship_model,&system,ship_vao,0, sun_model.position)
+        animate_planet(&neptune_model,&system,neptune_vao,0, sun_model.position)
 
 
         glfw.SwapBuffers(window)
