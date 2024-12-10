@@ -223,12 +223,7 @@ draw_model :: proc(model: ^Model, system: ^System, vao: VAO, tex_id: u32, light_
     gl.DrawElements(gl.TRIANGLES, i32(len(model.vertex_indices)), gl.UNSIGNED_INT, rawptr(uintptr(0)))
 }
 
-
-animate_planet :: proc(model: ^Model, system: ^System, vao: VAO, tex_id: u32, light_source_pos: linalg.Vector3f32) {
-    raw_duration := time.stopwatch_duration(watch)
-    secs := f32(time.duration_seconds(raw_duration))
-    theta := -secs
-
+animate_planet :: proc(model: ^Model, system: ^System, vao: VAO, tex_id: u32, light_source_pos: linalg.Vector3f32, distance: f32, theta:f32, movement_speed: f32) {
     rotation_matrix := linalg.Matrix4x4f32{
         f32(math.cos(theta)),   0.0,  f32(math.sin(theta)),   0.0,
         0.0,                    1.0,  0.0,                    0.0,
@@ -241,7 +236,7 @@ animate_planet :: proc(model: ^Model, system: ^System, vao: VAO, tex_id: u32, li
     model.m = linalg.matrix4_translate_f32(linalg.Vector3f32({model.position[0],model.position[1],model.position[2]})) * model.m
     model.m = linalg.matrix4_rotate_f32(50, {1.0,0.0,0.0}) * model.m
     model.m *= rotation_matrix
-    model.m = linalg.matrix4_translate_f32(linalg.Vector3f32({-10.0 * math.sin(theta), 0, 10.0 * math.cos(theta)})) * model.m
+    model.m = linalg.matrix4_translate_f32(linalg.Vector3f32({-distance * math.sin(theta*movement_speed), 0, distance * math.cos(theta*movement_speed)})) * model.m
     system.mvp = system.camera.p * system.camera.v
     system.mvp = system.mvp * model.m
 

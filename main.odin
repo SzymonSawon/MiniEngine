@@ -83,6 +83,11 @@ main :: proc() {
     ship_vao, ship_texture := setup_model(ship_model,"./models/textures/")
     append(&ship_model.material.textures, ship_texture)
 
+    carpet_model:Model = read_obj("./models/carpet_planet.obj")
+    carpet_vao, carpet_texture := setup_model(carpet_model,"./models/textures/")
+    append(&carpet_model.material.textures, carpet_texture)
+    append(&sun_model.children, &carpet_model)
+
     //SETUP SYSTEM
     m,p,mvp,v :linalg.Matrix4x4f32
     camera: Camera = {{2.0,0.0,3.0}, 0.0, 0.0, 45.0,v,p}
@@ -108,6 +113,7 @@ main :: proc() {
     //model.shader.program, tex_program_ok = gl.load_shaders_source(tex_vertex_shader, tex_fragment_shader)
     neptune_model.shader.program, tex_program_ok = gl.load_shaders_source(tex_vertex_shader, tex_fragment_shader)
     ship_model.shader.program = neptune_model.shader.program
+    carpet_model.shader.program = neptune_model.shader.program
     sun_model.shader.program, tex_nl_program_ok = gl.load_shaders_source(tex_nl_vertex_shader, tex_nl_fragment_shader)
 
     if !tex_program_ok {
@@ -117,8 +123,8 @@ main :: proc() {
         fmt.println("ERROR: Failed to load and compile shaders."); os.exit(1)
     }
 
-
-
+    
+    particles:=init_particles(100, &sun_model)
 
     glfw.SetCursorPosCallback(window, mouse_callback)
     time.stopwatch_start(&watch)
@@ -127,6 +133,12 @@ main :: proc() {
     last_mouse_posy: f64 = mouse_y
     glfw.SetInputMode(window,glfw.CURSOR, glfw.CURSOR_DISABLED)
     for !glfw.WindowShouldClose(window) {
+
+        raw_duration := time.stopwatch_duration(watch)
+        secs := f32(time.duration_seconds(raw_duration))
+        theta := -secs
+
+        update_particles(particles, theta, &sun_model)
 
         ratio:f32 = f32(width) / f32(height)
         gl.Viewport(0,0,width,height)
@@ -177,8 +189,8 @@ main :: proc() {
         
         //draw_model(&model,&system,vao,0, {0.0,0.0,0.0}, sun_model.position)
         draw_model(&sun_model,&system,sun_vao,0, sun_model.position)
-        animate_planet(&ship_model,&system,ship_vao,0, sun_model.position)
-        animate_planet(&neptune_model,&system,neptune_vao,0, sun_model.position)
+        animate_planet(&neptune_model,&system,neptune_vao,0, sun_model.position, 30.0, theta,0.5)
+        animate_planet(&carpet_model,&system,carpet_vao,0, sun_model.position, 20.0, theta,0.1)
 
 
         glfw.SwapBuffers(window)
