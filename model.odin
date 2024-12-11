@@ -223,6 +223,35 @@ draw_model :: proc(model: ^Model, system: ^System, vao: VAO, tex_id: u32, light_
     gl.DrawElements(gl.TRIANGLES, i32(len(model.vertex_indices)), gl.UNSIGNED_INT, rawptr(uintptr(0)))
 }
 
+animate_sun :: proc(model: ^Model, system: ^System, vao: VAO, tex_id: u32, light_source_pos: linalg.Vector3f32,theta:f32) {
+    gl.UseProgram(model.shader.program)
+    model.m = linalg.identity_matrix(linalg.Matrix4x4f32)
+    model.m= linalg.matrix4_translate_f32(linalg.Vector3f32({model.position[0],model.position[1],model.position[2]})) * model.m
+    system.mvp = system.camera.p * system.camera.v
+    system.mvp = system.mvp * model.m
+
+    gl.UniformMatrix4fv(gl.GetUniformLocation(model.shader.program, "MVP"   ), 1, gl.FALSE, &system.mvp[0][0])
+    gl.UniformMatrix4fv(gl.GetUniformLocation(model.shader.program, "model"   ), 1, gl.FALSE, &model.m[0][0])
+    gl.UniformMatrix4fv(gl.GetUniformLocation(model.shader.program, "view"), 1, gl.FALSE, &system.camera.v[0][0])
+    gl.UniformMatrix4fv(gl.GetUniformLocation(model.shader.program, "projection"), 1, gl.FALSE, &system.camera.p[0][0])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "lightColor"), 1.0,1.0,1.0)
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "objectColor"), 0.5,0.7,0.9)
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "lightPos"), light_source_pos[0], light_source_pos[1], light_source_pos[2])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "viewPos"), system.camera.position[0], system.camera.position[1], system.camera.position[2])
+    gl.Uniform1f(gl.GetUniformLocation(model.shader.program, "time"), theta)
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlAmbient"), model.material.ambient[0], model.material.ambient[1], model.material.ambient[2])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlDiffuse"), model.material.diffuse[0], model.material.diffuse[1], model.material.diffuse[2])
+    gl.Uniform3f(gl.GetUniformLocation(model.shader.program, "mtlSpecular"), model.material.specular[0], model.material.specular[1], model.material.specular[2])
+    gl.Uniform1f(gl.GetUniformLocation(model.shader.program, "mtlSpecularExponent"), model.material.specular_exponent)
+    gl.ActiveTexture(gl.TEXTURE0 + tex_id)
+    gl.BindTexture(gl.TEXTURE_2D, model.material.textures[0])
+    
+
+    gl.BindVertexArray(vao)
+    gl.DrawElements(gl.TRIANGLES, i32(len(model.vertex_indices)), gl.UNSIGNED_INT, rawptr(uintptr(0)))
+}
+
+
 animate_planet :: proc(model: ^Model, system: ^System, vao: VAO, tex_id: u32, light_source_pos: linalg.Vector3f32, distance: f32, theta:f32, movement_speed: f32) {
     rotation_matrix := linalg.Matrix4x4f32{
         f32(math.cos(theta)),   0.0,  f32(math.sin(theta)),   0.0,
