@@ -12,6 +12,7 @@ System :: struct{
     camera: Camera,
     mvp: linalg.Matrix4f32,
     width, height: i32,
+    v, p: linalg.Matrix4f32
 }
 
 Camera :: struct{

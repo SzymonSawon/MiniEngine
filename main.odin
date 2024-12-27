@@ -70,6 +70,28 @@ main :: proc() {
     //vao, fish_texture := setup_model(model,"./models/textures/")
     //append(&model.material.textures, fish_texture)
 
+
+    tex_sun_vertex_shader   := string(#load("shaders/texture_no_l_v.glsl"  ))
+    tex_sun_fragment_shader := string(#load("shaders/texture_no_l_f.glsl"))
+
+    tex_sun_program, tex_sun_program_ok := gl.load_shaders_source(tex_sun_vertex_shader, tex_sun_fragment_shader)
+    tex_sun_shader_locations :[dynamic]u32
+    tex_sun_shader: Shader = {tex_sun_program, tex_sun_shader_locations}
+    
+    sun_object := init_model_object(
+        "./models/sun.obj",
+        linalg.Vector3f32({0.0,2.0,0.0}),
+        linalg.Vector3f32({0.0,0.0,0.0}),
+        linalg.Vector3f32({0.0,0.0,0.0}),
+        &tex_sun_shader
+    )
+    model_data: ModelData = sun_object.model_data^
+    sun_object_vao, sun_object_texture := setup_model_object(sun_object.model_data^, "./models/textures/")
+    append(&model_data.material.textures, sun_object_texture)
+    sun_object.model_data = &model_data
+
+    fmt.print(sun_object)
+
     sun_model:Model = read_obj("./models/sun.obj")
     sun_vao, sun_texture := setup_model(sun_model,"./models/textures/")
     append(&sun_model.material.textures, sun_texture)
@@ -102,7 +124,9 @@ main :: proc() {
         camera,
         mvp,
         width,
-        height
+        height,
+        v,
+        p,
     }
 
     gl.Enable(gl.DEPTH_TEST)
@@ -114,8 +138,6 @@ main :: proc() {
     tex_nl_program_ok      : bool
     tex_nl_vertex_shader   := string(#load("shaders/texture_no_l_v.glsl"  ))
     tex_nl_fragment_shader := string(#load("shaders/texture_no_l_f.glsl"))
-
-
 
     //model.shader.program, tex_program_ok = gl.load_shaders_source(tex_vertex_shader, tex_fragment_shader)
     neptune_model.shader.program, tex_program_ok = gl.load_shaders_source(tex_vertex_shader, tex_fragment_shader)
@@ -185,20 +207,19 @@ main :: proc() {
         system.camera.position = system.camera.position + linalg.Vector3f32{rotated_movement[0], rotated_movement[1], rotated_movement[2]}
         system.camera.pitch = clamp(system.camera.pitch, -0.5 * math.PI, 0.5 * math.PI)
 
-
         system.camera.v = linalg.identity_matrix(linalg.Matrix4x4f32)
         system.camera.v = linalg.matrix4_translate_f32(-system.camera.position) * system.camera.v
         system.camera.v = linalg.matrix4_rotate_f32(system.camera.yaw, {0.0,1.0,0.0}) * system.camera.v
         system.camera.v = linalg.matrix4_rotate_f32(system.camera.pitch, {1.0,0.0,0.0}) * system.camera.v
 
         system.camera.p = linalg.matrix4_perspective_f32(camera.fov, ratio, 0.1, 400.0)
-        
+
         //draw_model(&model,&system,vao,0, {0.0,0.0,0.0}, sun_model.position)
         animate_sun(&sun_model,&system,sun_vao,0, sun_model.position, theta)
         animate_planet(&neptune_model,&system,neptune_vao,0, sun_model.position, 30.0, theta,0.5)
         animate_planet(&carpet_model,&system,carpet_vao,0, sun_model.position, 20.0, theta,0.1)
         animate_planet(&geom_model,&system,geom_vao,0, sun_model.position, 60.0, theta,0.3)
-
+        draw_model_object(&sun_object, &system, sun_object_vao, 0, sun_model.position)
 
         glfw.SwapBuffers(window)
         glfw.PollEvents()
