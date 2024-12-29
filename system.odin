@@ -8,15 +8,3 @@ import "vendor:glfw"
 import gl "vendor:OpenGL"
 
 
-System :: struct{
-    camera: Camera,
-    mvp: linalg.Matrix4f32,
-    width, height: i32,
-    v, p: linalg.Matrix4f32
-}
-
-Camera :: struct{
-    position : linalg.Vector3f32,
-    yaw,pitch,fov : f32,
-    v, p: linalg.Matrix4f32
-}

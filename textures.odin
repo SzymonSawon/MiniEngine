@@ -19,7 +19,6 @@ load_image :: proc(filepath, filename:string) -> TEXTURE{
     image_ptr, err = png.load_from_file(full_path, options)
     image_w := i32(image_ptr.width)
     image_h := i32(image_ptr.height)
-
     if err != nil {
         fmt.print("ERROR: Image: ", full_path, " failed to load.")
         return 0
