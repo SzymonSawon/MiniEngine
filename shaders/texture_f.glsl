@@ -17,7 +17,7 @@ uniform sampler2D texture1;
 
 void main()
 {
-    float ambientStrength = 0.3;
+    float ambientStrength = 0.2;
     vec3 ambient = ambientStrength * mtlAmbient;
 
     vec3 norm = normalize(Normal);
